@@ -1,0 +1,7 @@
+/gamemode creative
+/tp Dev knvn91
+/tp knvn91 Dev
+/stats elProfesseor
+/stats EuropeanPengu
+/stats radelt
+/hub
