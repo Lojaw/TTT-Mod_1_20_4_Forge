@@ -2,19 +2,29 @@ package de.lojaw.tttmod;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.entity.LevelEntityGetter;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -29,6 +39,10 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
+
+import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Objects;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(TTT_Mod_1_20_4.MODID)
@@ -87,6 +101,54 @@ public class TTT_Mod_1_20_4 {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
 
+    }
+
+    private static final long DELAY_MS = 2000; // 1 Sekunde
+    private long lastExecutionTime = 0;
+
+    @SubscribeEvent
+    public void onWorldLoad(LevelEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel) {
+            ServerLevel world = (ServerLevel) event.getLevel();
+            String worldName = world.dimension().location().toString();
+            LoggerUtils.logger.info("onWorldLoad: World loaded: " + worldName);
+        }
+    }
+
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) {
+
+            Minecraft minecraft = Minecraft.getInstance();
+            // Überprüfe, ob der Spieler existiert und nicht null ist
+            if (minecraft.player != null) {
+                // Setze den Sprintenstatus des Spielers auf true
+                minecraft.player.setSprinting(true);
+            }
+
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastExecutionTime >= DELAY_MS) {
+                lastExecutionTime = currentTime;
+
+                ClientLevel world = minecraft.level;
+
+                if (world != null) {
+                    world.entitiesForRendering().forEach(entity -> {
+                        int entityId = entity.getId();
+
+                        if (entity instanceof Player player) {
+                            String playerName = player.getDisplayName().getString();
+                            if (!WorldLoadListener.getLoggedEntities().get().contains(playerName)) {
+                                //EntityLogger.logEntityId(entityId, playerName);
+                                //WorldLoadListener.getLoggedEntities().get().add(playerName);
+                            }
+                        } else {
+                            //EntityLogger.logEntityId(entityId, null);
+                        }
+                    });
+                }
+            }
+        }
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
